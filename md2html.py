@@ -34,6 +34,7 @@ def md2html(src_file: Union[Path, str]):
 
     with open(output_file_path, 'w', encoding='utf-8') as f:
         f.write(page)
+    return output_file_path
 
 
 if __name__ == "__main__":

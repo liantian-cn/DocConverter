@@ -10,19 +10,8 @@ from io import BytesIO
 from docx import Document
 from subprocess import Popen
 from datetime import datetime
-from jieba.analyse import extract_tags
 
-__all__ = ['docx2rst']
-
-head_template = """{title}
-{sharp}
-
-:Title: {title}
-:Date: {date}
-:tags: {tags}
-:Slug: {slug}
-
-"""
+__all__ = ['docx2md']
 
 
 def sava_image(file_path_name: str, archive: ZipFile, save_dir: Path, sub_dir: PurePosixPath, name_prefix: str):
@@ -41,7 +30,7 @@ def sava_image(file_path_name: str, archive: ZipFile, save_dir: Path, sub_dir: P
     return origin_filename, save_path
 
 
-def docx2rst(src_file: Union[Path, str]):
+def docx2md(src_file: Union[Path, str]):
     if isinstance(src_file, str):
         src_file = Path(src_file)
     if not src_file.exists():
@@ -56,7 +45,7 @@ def docx2rst(src_file: Union[Path, str]):
     slug = slugify(src_file.stem)
     doc_filename = src_file.stem
 
-    output_rst_file_name = slug + ".rst"
+    output_rst_file_name = slug + ".md"
     output_rst_file_path = src_dir.joinpath(output_rst_file_name)
 
     try:
@@ -64,49 +53,40 @@ def docx2rst(src_file: Union[Path, str]):
     except:
         created = datetime.now()
 
-    media_save_dir = PurePosixPath("."). \
-        joinpath("media"). \
-        joinpath(created.strftime("%Y-%m-%d"))
+    img_save_dir = PurePosixPath(".").joinpath("img")
 
     archive = ZipFile(src_file, 'r')
     img_list = []
 
     for x in archive.namelist():
         if x.startswith("word/media/") and (not x.endswith('/')):
-            origin_filename, save_path = sava_image(
-                file_path_name=x,
-                archive=archive,
-                save_dir=src_dir,
-                sub_dir=media_save_dir,
-                name_prefix=slug)
-            img_list.append((origin_filename, save_path.__str__()))
+            try:
+                origin_filename, save_path = sava_image(
+                    file_path_name=x,
+                    archive=archive,
+                    save_dir=src_dir,
+                    sub_dir=img_save_dir,
+                    name_prefix=slug)
+                img_list.append((origin_filename, save_path.__str__()))
+            except:
+                pass
 
     cmd = ["pandoc",
            "-f docx",
            "\"{}\"".format(src_file),
-           "-t rst",
+           "-t markdown",
            "-o \"{}\"".format(output_rst_file_path)]
     Popen(" ".join(cmd)).wait()
 
     with open(output_rst_file_path, 'rt', encoding='utf-8') as file:
         file_data = file.read()
-
+    # print(img_list)
     for origin_filename, save_path in img_list:
-        before = "image:: media/" + origin_filename
-        after = "image:: " + save_path
+        before = "media/" + origin_filename
+        after = save_path
 
         file_data = file_data.replace(before, after)
 
-    tags = extract_tags(file_data, topK=4, allowPOS=('ns', 'n', 'vn', 'v', 'nz', 'vn', 'f', 's', 'ns',))
-    file_head = head_template.format(
-        title=doc_filename,
-        sharp="#" * 2 * len(doc_filename),
-        date=document.core_properties.created.strftime("%Y-%m-%d %H:%M"),
-        slug=slug,
-        tags=", ".join(tags)
-
-    )
-    file_data = file_head + file_data
     with open(output_rst_file_path, 'wt', encoding='utf-8') as file:
         file.write(file_data)
     return output_rst_file_path
@@ -120,4 +100,4 @@ if __name__ == "__main__":
     root.withdraw()
     folder_selected = filedialog.askdirectory()
     for file in Path(folder_selected).glob('*.docx'):
-        docx2rst(file)
+        docx2md(file)

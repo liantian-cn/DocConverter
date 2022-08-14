@@ -16,3 +16,8 @@ https://pandoc.org/
 自己拼凑的markdown转html工具
 
 将使用github风格的css。
+
+
+# docx2md
+将Word文档（docx）转换为md的工具
+类似docx2rst，不过没有处理tags
